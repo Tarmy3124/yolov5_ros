@@ -1,8 +1,3 @@
-#! python path
-import rospy
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
-
 import glob
 import math
 import os
@@ -218,20 +213,8 @@ class LoadWebcam:  # for inference
         # pipe = "rtspsrc location=rtsp://root:root@192.168.0.91:554/axis-media/media.amp?videocodec=h264&resolution=3840x2160 protocols=GST_RTSP_LOWER_TRANS_TCP ! rtph264depay ! queue ! vaapih264dec ! videoconvert ! appsink"  # GStreamer
 
         self.pipe = pipe
-        # self.cap = cv2.VideoCapture(pipe)  # video capture object
-        # self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # set buffer size
-
-        self.subvideo = rospy.Subscriber('camera1/usb_cam1_1/image_raw', Image, self.image_converter)
-        self.bridge = CvBridge()
-
-
-    def image_converter(self, video_src):
-           self.video_src = video_src
-           try:
-               self.cap = self.bridge.imgmsg_to_cv(self.video_src, "bgr8")
-               self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
-           except CvBridgeError e:
-               print e
+        self.cap = cv2.VideoCapture(pipe)  # video capture object
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # set buffer size
 
 
     def __iter__(self):
@@ -278,7 +261,7 @@ class LoadWebcam:  # for inference
 
 
 class LoadStreams:  # multiple IP or RTSP cameras
-    def __init__(self, sources='streams.txt', img_size=640):
+    def __init__(self, capture, sources='streams.txt', img_size=640):
         self.mode = 'images'
         self.img_size = img_size
 
@@ -294,7 +277,8 @@ class LoadStreams:  # multiple IP or RTSP cameras
         for i, s in enumerate(sources):
             # Start the thread to read frames from the video stream
             print('%g/%g: %s... ' % (i + 1, n, s), end='')
-            cap = cv2.VideoCapture(eval(s) if s.isnumeric() else s)
+            # cap = cv2.VideoCapture(eval(s) if s.isnumeric() else s)\
+            cap = capture
             assert cap.isOpened(), 'Failed to open %s' % s
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
