@@ -1,3 +1,8 @@
+#! python path
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+
 import glob
 import math
 import os
@@ -84,6 +89,7 @@ class InfiniteDataLoader(torch.utils.data.dataloader.DataLoader):
         super().__init__(*args, **kwargs)
         object.__setattr__(self, 'batch_sampler', _RepeatSampler(self.batch_sampler))
         self.iterator = super().__iter__()
+        
 
     def __len__(self):
         return len(self.batch_sampler.sampler)
@@ -124,6 +130,8 @@ class LoadImages:  # for inference
         images = [x for x in files if os.path.splitext(x)[-1].lower() in img_formats]
         videos = [x for x in files if os.path.splitext(x)[-1].lower() in vid_formats]
         ni, nv = len(images), len(videos)
+
+
 
         self.img_size = img_size
         self.files = images + videos
@@ -180,10 +188,12 @@ class LoadImages:  # for inference
         # cv2.imwrite(path + '.letterbox.jpg', 255 * img.transpose((1, 2, 0))[:, :, ::-1])  # save letterbox image
         return path, img, img0, self.cap
 
+
     def new_video(self, path):
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
         self.nframes = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
 
     def __len__(self):
         return self.nf  # number of files
@@ -208,8 +218,21 @@ class LoadWebcam:  # for inference
         # pipe = "rtspsrc location=rtsp://root:root@192.168.0.91:554/axis-media/media.amp?videocodec=h264&resolution=3840x2160 protocols=GST_RTSP_LOWER_TRANS_TCP ! rtph264depay ! queue ! vaapih264dec ! videoconvert ! appsink"  # GStreamer
 
         self.pipe = pipe
-        self.cap = cv2.VideoCapture(pipe)  # video capture object
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # set buffer size
+        # self.cap = cv2.VideoCapture(pipe)  # video capture object
+        # self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # set buffer size
+
+        self.subvideo = rospy.Subscriber('camera1/usb_cam1_1/image_raw', Image, self.image_converter)
+        self.bridge = CvBridge()
+
+
+    def image_converter(self, video_src):
+           self.video_src = video_src
+           try:
+               self.cap = self.bridge.imgmsg_to_cv(self.video_src, "bgr8")
+               self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+           except CvBridgeError e:
+               print e
+
 
     def __iter__(self):
         self.count = -1
